@@ -10,8 +10,7 @@ class OpenGrid(object):
 
     def __init__(self):
         self.cells = {}
-        self._rowmin = self._rowmax = self._colmin = self._colmax = 0
-        self.stale = False
+        self.stale = True
 
     def copy(self):
         copied = OpenGrid()
@@ -47,10 +46,13 @@ class OpenGrid(object):
 
     def refresh_covered_area(self):
         if not self.stale: return
-        self._colmin = min([c for (r, c) in self.cells.keys()])
-        self._colmax = max([c for (r, c) in self.cells.keys()])
-        self._rowmin = min([r for (r, c) in self.cells.keys()])
-        self._rowmax = max([r for (r, c) in self.cells.keys()])
+        if not self.cells:
+            self._colmin = self._colmax = self._rowmin = self._rowmax = 0
+        else:
+            self._colmin = min([c for (r, c) in self.cells.keys()])
+            self._colmax = max([c for (r, c) in self.cells.keys()])
+            self._rowmin = min([r for (r, c) in self.cells.keys()])
+            self._rowmax = max([r for (r, c) in self.cells.keys()])
         self.stale = False
 
     def get_colmin(self):
@@ -81,53 +83,6 @@ class OpenGrid(object):
         return self.rowmax - self.rowmin + 1
     height = property(get_height)
 
-
-class Grid(OpenGrid):
-
-    u'''
-    >>> grid = Grid(3, 3)
-    >>> grid.dump()
-    凸凸凸凸凸
-    凸＿＿＿凸
-    凸＿＿＿凸
-    凸＿＿＿凸
-    凸凸凸凸凸
-    >>>
-    '''
-
-    def __init__(self, width, height):
-        super(Grid, self).__init__()
-        colmin = -1
-        colmax = width
-        rowmin = -1
-        rowmax = height
-        self.fill_wall(rowmin, colmin, rowmax, colmax)
-
-    def copy(self):
-        copied = Grid(self.colmax, self.rowmax)
-        copied.cells = self.cells.copy()
-        return copied
-
-    def fill_wall(self, rowmin, colmin, rowmax, colmax):
-        self.set((rowmin, colmin), FILLED)
-        self.set((rowmax, colmin), FILLED)
-        self.set((rowmin, colmax), FILLED)
-        self.set((rowmax, colmax), FILLED)
-        for row in range(rowmin + 1, rowmax):
-            self.set((row, colmin), FILLED)
-            self.set((row, colmax), FILLED)
-        for col in range(colmin + 1, colmax):
-            self.set((rowmin, col), FILLED)
-            self.set((rowmax, col), FILLED)
-
-    def dump(self):
-        lines = u''
-        for row in range(self.rowmin, self.rowmax + 1):
-            if lines: lines += '\n'
-            for col in range(self.colmin, self.colmax + 1):
-                lines += self.get((row, col))
-        print lines
-
     def allpos(self):
         return ((r, c)
                 for r in range(self.rowmin, self.rowmax + 1)
@@ -156,6 +111,19 @@ class Grid(OpenGrid):
             if self.get(pos) == EMPTY:
                 self.set(pos, FILLED)
 
+    def dump(self, empty=None, filled=None):
+        if not empty: empty = EMPTY
+        if not filled: filled = FILLED
+        lines = u''
+        for row in range(self.rowmin, self.rowmax + 1):
+            if lines: lines += '\n'
+            for col in range(self.colmin, self.colmax + 1):
+                v = self.get((row, col))
+                if v == EMPTY: lines += empty
+                elif v == FILLED: lines += FILLED
+                else: lines += v
+        print lines
+
     def shrink(self):
         u'''
         >>> g = Grid(3, 3)
@@ -183,6 +151,9 @@ class Grid(OpenGrid):
                self.get_col(self.colmin) ==
                self.get_col(self.colmin + 1)):
                 self.delete_col(self.colmin)
+            elif (EMPTY * self.height ==
+                  self.get_col(self.colmin)):
+                self.delete_col(self.colmin)
             else:
                 break
 
@@ -191,6 +162,9 @@ class Grid(OpenGrid):
             if (FILLED * self.height ==
                self.get_col(self.colmax) ==
                self.get_col(self.colmax - 1)):
+                self.delete_col(self.colmax)
+            elif (EMPTY * self.height ==
+                  self.get_col(self.colmax)):
                 self.delete_col(self.colmax)
             else:
                 break
@@ -201,6 +175,9 @@ class Grid(OpenGrid):
                self.get_row(self.rowmin) ==
                self.get_row(self.rowmin + 1)):
                 self.delete_row(self.rowmin)
+            elif (EMPTY * self.width ==
+                  self.get_row(self.rowmin)):
+                self.delete_row(self.rowmin)
             else:
                 break
 
@@ -210,8 +187,45 @@ class Grid(OpenGrid):
                self.get_row(self.rowmax) ==
                self.get_row(self.rowmax - 1)):
                 self.delete_row(self.rowmax)
+            elif (EMPTY * self.width ==
+                  self.get_row(self.rowmax)):
+                self.delete_row(self.rowmax)
             else:
                 break
+
+
+class Grid(OpenGrid):
+
+    u'''
+    >>> grid = Grid(3, 3)
+    >>> grid.dump()
+    凸凸凸凸凸
+    凸＿＿＿凸
+    凸＿＿＿凸
+    凸＿＿＿凸
+    凸凸凸凸凸
+    >>>
+    '''
+
+    def __init__(self, width, height):
+        super(Grid, self).__init__()
+        colmin = -1
+        colmax = width
+        rowmin = -1
+        rowmax = height
+        self.fill_wall(rowmin, colmin, rowmax, colmax)
+
+    def fill_wall(self, rowmin, colmin, rowmax, colmax):
+        self.set((rowmin, colmin), FILLED)
+        self.set((rowmax, colmin), FILLED)
+        self.set((rowmin, colmax), FILLED)
+        self.set((rowmax, colmax), FILLED)
+        for row in range(rowmin + 1, rowmax):
+            self.set((row, colmin), FILLED)
+            self.set((row, colmax), FILLED)
+        for col in range(colmin + 1, colmax):
+            self.set((rowmin, col), FILLED)
+            self.set((rowmax, col), FILLED)
 
 
 class Crossword(object):

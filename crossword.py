@@ -35,14 +35,14 @@ class OpenGrid(object):
         return (row + (increment if direction == VERTICAL else 0),
                 col + (increment if direction == HORIZONTAL else 0))
 
-    def poslist(self, pos, length, direction):
+    def poslist(self, pos, direction, length):
         return [Grid.pos_inc(pos, i, direction) for i in range(length)]
 
     def is_empty(self, pos):
         return self.get(pos) == EMPTY
 
     def get_word(self, pos, direction, length):
-        return ''.join([self.get(p) for p in self.poslist(pos, length, direction)])
+        return ''.join([self.get(p) for p in self.poslist(pos, direction, length)])
 
     def refresh_covered_area(self):
         if not self.stale: return
@@ -295,7 +295,7 @@ class Crossword(object):
         if self.is_embedded(Grid.pos_inc(pos, len(word), direction)):
             return False
         old_p = None
-        for i, p in enumerate(self.grid.poslist(pos, len(word), direction)):
+        for i, p in enumerate(self.grid.poslist(pos, direction, len(word))):
             if not self.is_empty(p) and word[i] != self.get(p):
                 return False
             if i > 0:
@@ -320,7 +320,7 @@ class Crossword(object):
         #######
         '''
         old_p = None
-        for i, p in enumerate(self.grid.poslist(pos, len(word), direction)):
+        for i, p in enumerate(self.grid.poslist(pos, direction, len(word))):
             self.grid.set(p, word[i])
             if i > 0:
                 self.connect(old_p, p)

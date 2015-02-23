@@ -1,52 +1,85 @@
 # encoding: utf-8
 
-words = [
-    u'りんご',
-    u'みかん',
-    u'ごりら',
-    u'らくご'
-]
+FILLED = u'凸'
+EMPTY = u'＿'
+VERTICAL = 1
+HORIZONTAL = 2
 
 
 class OpenGrid(object):
 
-    FILLED = u'凸'
-    EMPTY = u'＿'
-    VERTICAL = 1
-    HORIZONTAL = 2
-
     def __init__(self):
         self.cells = {}
+        self._rowmin = self._rowmax = self._colmin = self._colmax = 0
+        self.stale = False
 
     def copy(self):
         copied = OpenGrid()
         copied.cells = self.cells.copy()
+        copied.stale = True
         return copied
 
     def set(self, pos, value):
         assert self.get(pos) == value or pos not in self.cells
-        if value == Grid.EMPTY: return
+        if value == EMPTY: return
         self.cells[pos] = value
+        self.stale = True
 
     def get(self, pos):
         if pos in self.cells:
             return self.cells[pos]
-        return Grid.EMPTY
+        return EMPTY
 
     @staticmethod
     def pos_inc(pos, increment, direction):
         row, col = pos
-        return (row + (increment if direction == Grid.VERTICAL else 0),
-                col + (increment if direction == Grid.HORIZONTAL else 0))
+        return (row + (increment if direction == VERTICAL else 0),
+                col + (increment if direction == HORIZONTAL else 0))
 
     def poslist(self, pos, length, direction):
         return [Grid.pos_inc(pos, i, direction) for i in range(length)]
 
     def is_empty(self, pos):
-        return self.get(pos) == Grid.EMPTY
+        return self.get(pos) == EMPTY
 
     def get_word(self, pos, direction, length):
         return u''.join([self.get(p) for p in self.poslist(pos, length, direction)])
+
+    def refresh_covered_area(self):
+        if not self.stale: return
+        self._colmin = min([c for (r, c) in self.cells.keys()])
+        self._colmax = max([c for (r, c) in self.cells.keys()])
+        self._rowmin = min([r for (r, c) in self.cells.keys()])
+        self._rowmax = max([r for (r, c) in self.cells.keys()])
+        self.stale = False
+
+    def get_colmin(self):
+        self.refresh_covered_area()
+        return self._colmin
+    colmin = property(get_colmin)
+
+    def get_colmax(self):
+        self.refresh_covered_area()
+        return self._colmax
+    colmax = property(get_colmax)
+
+    def get_rowmin(self):
+        self.refresh_covered_area()
+        return self._rowmin
+    rowmin = property(get_rowmin)
+
+    def get_rowmax(self):
+        self.refresh_covered_area()
+        return self._rowmax
+    rowmax = property(get_rowmax)
+
+    def get_width(self):
+        return self.colmax - self.colmin + 1
+    width = property(get_width)
+
+    def get_height(self):
+        return self.rowmax - self.rowmin + 1
+    height = property(get_height)
 
 
 class Grid(OpenGrid):
@@ -64,35 +97,28 @@ class Grid(OpenGrid):
 
     def __init__(self, width, height):
         super(Grid, self).__init__()
-        self.colmin = -1
-        self.colmax = width
-        self.rowmin = -1
-        self.rowmax = height
-        self.fill_wall()
+        colmin = -1
+        colmax = width
+        rowmin = -1
+        rowmax = height
+        self.fill_wall(rowmin, colmin, rowmax, colmax)
 
     def copy(self):
         copied = Grid(self.colmax, self.rowmax)
         copied.cells = self.cells.copy()
         return copied
 
-    def fill_wall(self):
-        self.set((self.rowmin, self.colmin), Grid.FILLED)
-        self.set((self.rowmax, self.colmin), Grid.FILLED)
-        self.set((self.rowmin, self.colmax), Grid.FILLED)
-        self.set((self.rowmax, self.colmax), Grid.FILLED)
-        for row in range(self.rowmin + 1, self.rowmax):
-            self.set((row, self.colmin), Grid.FILLED)
-            self.set((row, self.colmax), Grid.FILLED)
-        for col in range(self.colmin + 1, self.colmax):
-            self.set((self.rowmin, col), Grid.FILLED)
-            self.set((self.rowmax, col), Grid.FILLED)
-
-    def get(self, pos):
-        (r, c) = pos
-        if (r < self.rowmin or self.rowmax < r or
-           c < self.colmin or self.colmax < c):
-            return Grid.EMPTY
-        return super(Grid, self).get(pos)
+    def fill_wall(self, rowmin, colmin, rowmax, colmax):
+        self.set((rowmin, colmin), FILLED)
+        self.set((rowmax, colmin), FILLED)
+        self.set((rowmin, colmax), FILLED)
+        self.set((rowmax, colmax), FILLED)
+        for row in range(rowmin + 1, rowmax):
+            self.set((row, colmin), FILLED)
+            self.set((row, colmax), FILLED)
+        for col in range(colmin + 1, colmax):
+            self.set((rowmin, col), FILLED)
+            self.set((rowmax, col), FILLED)
 
     def dump(self):
         lines = u''
@@ -108,23 +134,27 @@ class Grid(OpenGrid):
                 for c in range(self.colmin, self.colmax + 1))
 
     def get_col(self, col):
-        return self.get_word((self.rowmin, col), Grid.VERTICAL, self.height)
+        return self.get_word((self.rowmin, col), VERTICAL, self.height)
 
     def get_row(self, row):
-        return self.get_word((row, self.colmin), Grid.HORIZONTAL, self.width)
+        return self.get_word((row, self.colmin), HORIZONTAL, self.width)
 
-    def get_width(self):
-        return self.colmax - self.colmin + 1
-    width = property(get_width)
+    def delete_col(self, col):
+        self.cells = dict(((r, c), self.cells[(r, c)])
+                          for (r, c) in self.cells
+                          if c != col)
+        self.stale = True
 
-    def get_height(self):
-        return self.rowmax - self.rowmin + 1
-    height = property(get_height)
+    def delete_row(self, row):
+        self.cells = dict(((r, c), self.cells[(r, c)])
+                          for (r, c) in self.cells
+                          if r != row)
+        self.stale = True
 
     def fill_all_empty(self):
         for pos in self.allpos():
-            if self.get(pos) == Grid.EMPTY:
-                self.set(pos, Grid.FILLED)
+            if self.get(pos) == EMPTY:
+                self.set(pos, FILLED)
 
     def shrink(self):
         u'''
@@ -149,37 +179,37 @@ class Grid(OpenGrid):
 
     def shrink_right(self):
         while True:
-            if (Grid.FILLED * self.height ==
+            if (FILLED * self.height ==
                self.get_col(self.colmin) ==
                self.get_col(self.colmin + 1)):
-                self.colmin += 1
+                self.delete_col(self.colmin)
             else:
                 break
 
     def shrink_left(self):
         while True:
-            if (Grid.FILLED * self.height ==
+            if (FILLED * self.height ==
                self.get_col(self.colmax) ==
                self.get_col(self.colmax - 1)):
-                self.colmax -= 1
+                self.delete_col(self.colmax)
             else:
                 break
 
     def shrink_top(self):
         while True:
-            if (Grid.FILLED * self.width ==
+            if (FILLED * self.width ==
                self.get_row(self.rowmin) ==
                self.get_row(self.rowmin + 1)):
-                self.rowmin += 1
+                self.delete_row(self.rowmin)
             else:
                 break
 
     def shrink_bottom(self):
         while True:
-            if (Grid.FILLED * self.width ==
+            if (FILLED * self.width ==
                self.get_row(self.rowmax) ==
                self.get_row(self.rowmax - 1)):
-                self.rowmax -= 1
+                self.delete_row(self.rowmax)
             else:
                 break
 
@@ -209,7 +239,7 @@ class Crossword(object):
         return self.grid.is_empty(pos)
 
     def is_embedded(self, pos):
-        return not(self.is_empty(pos) or self.get(pos) == Grid.FILLED)
+        return not(self.is_empty(pos) or self.get(pos) == FILLED)
 
     def is_connected(self, pos1, pos2):
         return (pos1, pos2) in self.connected
@@ -220,30 +250,30 @@ class Crossword(object):
     def is_fit(self, pos, direction, word):
         u'''
         >>> c = Crossword(3, 3)
-        >>> c.is_fit((0, 0), Grid.HORIZONTAL, u'りんご')
+        >>> c.is_fit((0, 0), HORIZONTAL, u'りんご')
         True
         >>> c.grid.set((0, 0), u'り')
-        >>> c.is_fit((0, 0), Grid.VERTICAL, u'りんご')
+        >>> c.is_fit((0, 0), VERTICAL, u'りんご')
         True
         >>> c.grid.set((2, 0), u'ぬ')
-        >>> c.is_fit((0, 0), Grid.HORIZONTAL, u'りんご')
+        >>> c.is_fit((0, 0), HORIZONTAL, u'りんご')
         True
-        >>> c.is_fit((0, 0), Grid.VERTICAL, u'りんご')
+        >>> c.is_fit((0, 0), VERTICAL, u'りんご')
         False
         >>> c.grid.set((1, 1), u'ぬ')
-        >>> c.is_fit((1, 0), Grid.HORIZONTAL, u'りんご')
+        >>> c.is_fit((1, 0), HORIZONTAL, u'りんご')
         False
 
         単語内に単語を重ねない
         >>> c = Crossword(3, 3)
-        >>> c.embed((0, 0), Grid.HORIZONTAL, u'みかん')
-        >>> c.is_fit((0, 1), Grid.HORIZONTAL, u'かん')
+        >>> c.embed((0, 0), HORIZONTAL, u'みかん')
+        >>> c.is_fit((0, 1), HORIZONTAL, u'かん')
         False
 
         前後は空白か埋まっている
         >>> c = Crossword(3, 3)
-        >>> c.embed((0, 0), Grid.HORIZONTAL, u'みかん')
-        >>> c.is_fit((1, 0), Grid.VERTICAL, u'かん')
+        >>> c.embed((0, 0), HORIZONTAL, u'みかん')
+        >>> c.is_fit((1, 0), VERTICAL, u'かん')
         False
         '''
         if self.is_embedded(Grid.pos_inc(pos, -1, direction)):
@@ -264,8 +294,8 @@ class Crossword(object):
         u'''
         単語の前後は埋められる
         >>> c = Crossword(5, 5)
-        >>> c.embed((1, 1), Grid.HORIZONTAL, u'だんご')
-        >>> c.embed((1, 1), Grid.VERTICAL, u'だるま')
+        >>> c.embed((1, 1), HORIZONTAL, u'だんご')
+        >>> c.embed((1, 1), VERTICAL, u'だるま')
         >>> c.dump()
         凸凸凸凸凸凸凸
         凸＿凸＿＿＿凸
@@ -281,17 +311,17 @@ class Crossword(object):
             if i > 0:
                 self.connect(old_p, p)
             old_p = p
-        self.grid.set(Grid.pos_inc(pos, -1, direction), Grid.FILLED)
-        self.grid.set(Grid.pos_inc(pos, len(word), direction), Grid.FILLED)
+        self.grid.set(Grid.pos_inc(pos, -1, direction), FILLED)
+        self.grid.set(Grid.pos_inc(pos, len(word), direction), FILLED)
 
     def is_all_words_valid(self):
         for pos in self.allpos():
             if not self.is_embedded(pos):
                 continue
-            p1 = Grid.pos_inc(pos, 1, Grid.VERTICAL)
+            p1 = Grid.pos_inc(pos, 1, VERTICAL)
             if self.is_embedded(p1) and not self.is_connected(pos, p1):
                 return False
-            p2 = Grid.pos_inc(pos, 1, Grid.HORIZONTAL)
+            p2 = Grid.pos_inc(pos, 1, HORIZONTAL)
             if self.is_embedded(p2) and not self.is_connected(pos, p2):
                 return False
         return True
@@ -399,10 +429,10 @@ def find_all_fit(crossword, word):
     '''
     results = []
     for (r, c) in crossword.allpos():
-        if crossword.is_fit((r, c), Grid.HORIZONTAL, word):
-            results.append((r, c, Grid.HORIZONTAL))
-        if crossword.is_fit((r, c), Grid.VERTICAL, word):
-            results.append((r, c, Grid.VERTICAL))
+        if crossword.is_fit((r, c), HORIZONTAL, word):
+            results.append((r, c, HORIZONTAL))
+        if crossword.is_fit((r, c), VERTICAL, word):
+            results.append((r, c, VERTICAL))
     return results
 
 

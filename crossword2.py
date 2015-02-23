@@ -83,14 +83,33 @@ def build_crossword2(words, monitor=False):
                 base.dump()
             print
         sequences = base.all_disconnected_sequences()
-        fit_words = [(p, d, w) for (p, d, w) in propose_words(sequences, [w for w in words if w not in base.used_words]) if base.is_fit(p, d, w)]
-        if not fit_words:
+        if all([len(w) < 2 for (p, d, w) in sequences]):
+            # valid; not neccessarily good nor complete
             yield base
-            continue
-        for p, d, w in fit_words:
-            copy = base.copy()
-            copy.embed(p, d, w)
-            crosswords.append(copy)
+        for sequence in sequences:
+            fit_words = [(p, d, w) for (p, d, w) in propose_words(sequence, [w for w in words if w not in base.used_words]) if base.is_fit(p, d, w)]
+            if len(sequence[2]) > 1 and not fit_words:
+                # dead end; discard this base
+                break
+            for p, d, w in fit_words:
+                copy = base.copy()
+                copy.embed(p, d, w)
+                crosswords.append(copy)
+
+
+def propose_words(sequence, words):
+    (p, d, seq) = sequence
+    proposed_words = []
+    for word in words:
+        idx = 0
+        while word.find(seq, idx) >= 0:
+            proposed_words.append((OpenGrid.pos_inc(p, -word.find(seq), d), d, word))
+            idx = word.find(seq, idx) + 1
+    return proposed_words
+
+
+def evaluate_crossword(c):
+    return (c.grid.width + c.grid.height) * 1.0 / len(c.used_words)
 
 
 def pickup_crosswords(words):
@@ -102,20 +121,6 @@ def pickup_crosswords(words):
             print 'score: %f'%(best)
             print
 
-
-def propose_words(sequences, words):
-    proposed_words = []
-    for word in words:
-        for (p, d, seq) in sequences:
-            idx = 0
-            while word.find(seq, idx) >= 0:
-                proposed_words.append((OpenGrid.pos_inc(p, -word.find(seq), d), d, word))
-                idx = word.find(seq, idx) + 1
-    return proposed_words
-
-
-def evaluate_crossword(c):
-    return (c.grid.width + c.grid.height) * 1.0 / len(c.used_words)
 
 if __name__ == '__main__':
     import doctest

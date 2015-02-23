@@ -1,7 +1,7 @@
 # encoding: utf-8
 
-FILLED = u'凸'
-EMPTY = u'＿'
+FILLED = '#'
+EMPTY = '_'
 VERTICAL = 1
 HORIZONTAL = 2
 
@@ -42,7 +42,7 @@ class OpenGrid(object):
         return self.get(pos) == EMPTY
 
     def get_word(self, pos, direction, length):
-        return u''.join([self.get(p) for p in self.poslist(pos, length, direction)])
+        return ''.join([self.get(p) for p in self.poslist(pos, length, direction)])
 
     def refresh_covered_area(self):
         if not self.stale: return
@@ -120,7 +120,7 @@ class OpenGrid(object):
             for col in range(self.colmin, self.colmax + 1):
                 v = self.get((row, col))
                 if v == EMPTY: lines += empty
-                elif v == FILLED: lines += FILLED
+                elif v == FILLED: lines += filled
                 else: lines += v
         print lines
 
@@ -130,15 +130,15 @@ class OpenGrid(object):
         >>> g.fill_all_empty()
         >>> g.shrink()
         >>> g.dump()
-        凸
+        #
         >>> g = Grid(3, 3)
-        >>> g.set((1, 1), u'ぬ')
+        >>> g.set((1, 1), 'X')
         >>> g.fill_all_empty()
         >>> g.shrink()
         >>> g.dump()
-        凸凸凸
-        凸ぬ凸
-        凸凸凸
+        ###
+        #X#
+        ###
         '''
         self.shrink_right()
         self.shrink_left()
@@ -199,11 +199,11 @@ class Grid(OpenGrid):
     u'''
     >>> grid = Grid(3, 3)
     >>> grid.dump()
-    凸凸凸凸凸
-    凸＿＿＿凸
-    凸＿＿＿凸
-    凸＿＿＿凸
-    凸凸凸凸凸
+    #####
+    #___#
+    #___#
+    #___#
+    #####
     >>>
     '''
 
@@ -237,8 +237,8 @@ class Crossword(object):
     def allpos(self):
         return self.grid.allpos()
 
-    def dump(self):
-        return self.grid.dump()
+    def dump(self, *args, **argv):
+        return self.grid.dump(*args, **argv)
 
     def copy(self):
         copied = Crossword(self.grid.width, self.grid.height)
@@ -264,30 +264,30 @@ class Crossword(object):
     def is_fit(self, pos, direction, word):
         u'''
         >>> c = Crossword(3, 3)
-        >>> c.is_fit((0, 0), HORIZONTAL, u'りんご')
+        >>> c.is_fit((0, 0), HORIZONTAL, 'ANT')
         True
-        >>> c.grid.set((0, 0), u'り')
-        >>> c.is_fit((0, 0), VERTICAL, u'りんご')
+        >>> c.grid.set((0, 0), u'A')
+        >>> c.is_fit((0, 0), VERTICAL, 'ANT')
         True
-        >>> c.grid.set((2, 0), u'ぬ')
-        >>> c.is_fit((0, 0), HORIZONTAL, u'りんご')
+        >>> c.grid.set((2, 0), u'X')
+        >>> c.is_fit((0, 0), HORIZONTAL, u'ANT')
         True
-        >>> c.is_fit((0, 0), VERTICAL, u'りんご')
+        >>> c.is_fit((0, 0), VERTICAL, u'HUT')
         False
-        >>> c.grid.set((1, 1), u'ぬ')
-        >>> c.is_fit((1, 0), HORIZONTAL, u'りんご')
+        >>> c.grid.set((1, 1), u'X')
+        >>> c.is_fit((1, 0), HORIZONTAL, u'ANT')
         False
 
         単語内に単語を重ねない
         >>> c = Crossword(3, 3)
-        >>> c.embed((0, 0), HORIZONTAL, u'みかん')
-        >>> c.is_fit((0, 1), HORIZONTAL, u'かん')
+        >>> c.embed((0, 0), HORIZONTAL, u'BUS')
+        >>> c.is_fit((0, 1), HORIZONTAL, u'US')
         False
 
         前後は空白か埋まっている
         >>> c = Crossword(3, 3)
-        >>> c.embed((0, 0), HORIZONTAL, u'みかん')
-        >>> c.is_fit((1, 0), VERTICAL, u'かん')
+        >>> c.embed((0, 0), HORIZONTAL, u'BUS')
+        >>> c.is_fit((1, 0), VERTICAL, u'IN')
         False
         '''
         if self.is_embedded(Grid.pos_inc(pos, -1, direction)):
@@ -308,16 +308,16 @@ class Crossword(object):
         u'''
         単語の前後は埋められる
         >>> c = Crossword(5, 5)
-        >>> c.embed((1, 1), HORIZONTAL, u'だんご')
-        >>> c.embed((1, 1), VERTICAL, u'だるま')
+        >>> c.embed((1, 1), HORIZONTAL, u'ANT')
+        >>> c.embed((1, 1), VERTICAL, u'ALL')
         >>> c.dump()
-        凸凸凸凸凸凸凸
-        凸＿凸＿＿＿凸
-        凸凸だんご凸凸
-        凸＿る＿＿＿凸
-        凸＿ま＿＿＿凸
-        凸＿凸＿＿＿凸
-        凸凸凸凸凸凸凸
+        #######
+        #_#___#
+        ##ANT##
+        #_L___#
+        #_L___#
+        #_#___#
+        #######
         '''
         old_p = None
         for i, p in enumerate(self.grid.poslist(pos, len(word), direction)):
@@ -351,62 +351,62 @@ class Crossword(object):
 
 def build_crossword(width, height, words, monitor=False):
     u'''
-    >>> result = build_crossword(3, 2, [u'まめ', u'ごまめ'])
+    >>> result = build_crossword(3, 2, [u'AT', u'HAT'])
     >>> for r in result: r.dump()
-    凸凸凸
-    凸ま凸
-    凸め凸
-    凸凸凸
-    凸凸凸凸凸
-    凸ごまめ凸
-    凸凸め凸凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸凸凸ま凸
-    凸ごまめ凸
-    凸凸凸凸凸
-    >>> result = build_crossword(3, 3, [u'りんご', u'だんご'])
+    ###
+    #A#
+    #T#
+    ###
+    #####
+    #HAT#
+    ##T##
+    #####
+    #####
+    ###A#
+    #HAT#
+    #####
+    >>> result = build_crossword(3, 3, [u'GET', u'JET'])
     >>> for r in result: r.dump()
-    凸凸凸凸凸
-    凸りんご凸
-    凸凸凸凸凸
-    凸だんご凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸り凸だ凸
-    凸ん凸ん凸
-    凸ご凸ご凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸凸り凸凸
-    凸だんご凸
-    凸凸ご凸凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸だ凸り凸
-    凸ん凸ん凸
-    凸ご凸ご凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸凸凸り凸
-    凸凸凸ん凸
-    凸だんご凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸凸だ凸凸
-    凸りんご凸
-    凸凸ご凸凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸だんご凸
-    凸凸凸凸凸
-    凸りんご凸
-    凸凸凸凸凸
-    凸凸凸凸凸
-    凸凸凸だ凸
-    凸凸凸ん凸
-    凸りんご凸
-    凸凸凸凸凸
+    #####
+    #GET#
+    #####
+    #JET#
+    #####
+    #####
+    #G#J#
+    #E#E#
+    #T#T#
+    #####
+    #####
+    ##G##
+    #JET#
+    ##T##
+    #####
+    #####
+    #J#G#
+    #E#E#
+    #T#T#
+    #####
+    #####
+    ###G#
+    ###E#
+    #JET#
+    #####
+    #####
+    ##J##
+    #GET#
+    ##T##
+    #####
+    #####
+    #JET#
+    #####
+    #GET#
+    #####
+    #####
+    ###J#
+    ###E#
+    #GET#
+    #####
 
     '''
     crosswords = [Crossword(width, height)]
@@ -424,7 +424,7 @@ def build_crossword(width, height, words, monitor=False):
         crosswords = new_grids
         if monitor:
             for c in crosswords:
-                c.dump()
+                c.dump(empty=monitor['EMPTY'], filled=monitor['FILLED'])
                 print
 
     validated_crosswords = [g for g in crosswords if g.is_all_words_valid()]
@@ -435,10 +435,10 @@ def build_crossword(width, height, words, monitor=False):
 def find_all_fit(crossword, word):
     u'''
     >>> c = Crossword(3, 3)
-    >>> find_all_fit(c, u'りんご')
+    >>> find_all_fit(c, u'ART')
     [(0, 0, 2), (0, 0, 1), (0, 1, 1), (0, 2, 1), (1, 0, 2), (2, 0, 2)]
-    >>> c.grid.set((1, 2), u'ぬ')
-    >>> find_all_fit(c, u'りんご')
+    >>> c.grid.set((1, 2), u'X')
+    >>> find_all_fit(c, u'ART')
     [(0, 0, 2), (0, 0, 1), (0, 1, 1), (2, 0, 2)]
     '''
     results = []

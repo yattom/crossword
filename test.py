@@ -12,4 +12,4 @@ words = [
     u'るーと',
 ]
 
-crossword.build_crossword(6, 6, words, monitor=True)
+crossword.build_crossword(6, 6, words, monitor={'EMPTY': u'＿', 'FILLED': u'凸'})

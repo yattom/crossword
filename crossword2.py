@@ -181,22 +181,31 @@ def build_crossword2(words, monitor=False):
             else:
                 base.dump()
             print
-        sequences = base.all_disconnected_sequences()
-        if all([len(s) < 2 for (p, d, s) in sequences if s.find('.') == -1]):
-            # valid; not neccessarily good nor complete
+        try:
+            candidates = generate_candidates(words, base)
             yield base
-        fit_words = []
-        for sequence in sequences:
-            fit_words_for_seq = [(p, d, w) for (p, d, w) in propose_words(sequence, [w for w in words if w not in base.used_words]) if base.is_fit(p, d, w)]
-            if len(sequence[2]) > 1 and not fit_words_for_seq:
-                # dead end; discard this base
-                fit_words = []
-                break
-            fit_words += fit_words_for_seq
-        for p, d, w in fit_words:
-            copy = base.copy()
-            copy.embed(p, d, w)
-            crosswords.append(copy)
+            crosswords += candidates
+        except ValueError:
+            # discard this base
+            pass
+
+
+def generate_candidates(words, base):
+    sequences = base.all_disconnected_sequences()
+    fit_words = []
+    for sequence in sequences:
+        fit_words_for_seq = [(p, d, w) for (p, d, w) in propose_words(sequence, [w for w in words if w not in base.used_words]) if base.is_fit(p, d, w)]
+        _, _, s = sequence
+        if s.find('.') == -1 and len(s) > 1 and not fit_words_for_seq:
+            # dead end; discard this base
+            raise ValueError('no candidates found')
+        fit_words += fit_words_for_seq
+    candidates = []
+    for p, d, w in fit_words:
+        copy = base.copy()
+        copy.embed(p, d, w)
+        candidates.append(copy)
+    return candidates
 
 
 def propose_words(sequence, words):

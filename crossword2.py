@@ -119,11 +119,14 @@ def evaluate_crossword(c):
     # return (c.grid.width * c.grid.height) * 1.0 / sum([len(w) for w in c.used_words])
 
 
-def pickup_crosswords(words, monitor=False):
+def pickup_crosswords(words, dump_option=None, monitor=False):
     best = 9999
     for c in build_crossword2(words, monitor=monitor):
         if evaluate_crossword(c) < best:
-            c.dump()
+            if dump_option:
+                c.dump(empty=dump_option['EMPTY'], filled=dump_option['FILLED'])
+            else:
+                c.dump()
             best = evaluate_crossword(c)
             print 'score: %f'%(best)
             print

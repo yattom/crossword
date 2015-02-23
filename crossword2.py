@@ -26,16 +26,18 @@ class Crossword2(Crossword):
         '''
         >>> c = Crossword2()
         >>> c.embed((0, 0), HORIZONTAL, 'ANT')
-        >>> c.embed((0, 0), VERTICAL, 'AXE')
+        >>> c.embed((0, 0), VERTICAL, 'ATOM')
         >>> c.embed((1, 2), HORIZONTAL, 'IT')
+        >>> c.embed((3, 0), HORIZONTAL, 'MEET')
         >>> c.dump()
         _#____
         #ANT#_
-        _X#IT#
-        _E____
+        _T#IT#
+        _O____
+        #MEET#
         _#____
         >>> c.all_disconnected_sequences()
-        [((1, 0), 2, 'X'), ((2, 0), 2, 'E'), ((0, 1), 1, 'N'), ((0, 2), 1, 'TI'), ((1, 3), 1, 'T')]
+        [((1, 0), 2, 'T'), ((2, 0), 2, 'O'), ((0, 1), 1, 'N'), ((3, 1), 1, 'E'), ((0, 2), 1, 'TI'), ((3, 2), 1, 'E'), ((1, 3), 1, 'T'), ((3, 3), 1, 'T')]
         '''
         sequences = []
         for pos, direction, length in [((r, self.grid.colmin), HORIZONTAL, self.grid.width) for r in range(self.grid.rowmin, self.grid.rowmax + 1)] + [((self.grid.rowmin, c), VERTICAL, self.grid.height) for c in range(self.grid.colmin, self.grid.colmax + 1)]:
@@ -86,15 +88,18 @@ def build_crossword2(words, monitor=False):
         if all([len(w) < 2 for (p, d, w) in sequences]):
             # valid; not neccessarily good nor complete
             yield base
+        fit_words = []
         for sequence in sequences:
-            fit_words = [(p, d, w) for (p, d, w) in propose_words(sequence, [w for w in words if w not in base.used_words]) if base.is_fit(p, d, w)]
-            if len(sequence[2]) > 1 and not fit_words:
+            fit_words_for_seq = [(p, d, w) for (p, d, w) in propose_words(sequence, [w for w in words if w not in base.used_words]) if base.is_fit(p, d, w)]
+            if len(sequence[2]) > 1 and not fit_words_for_seq:
                 # dead end; discard this base
+                fit_words = []
                 break
-            for p, d, w in fit_words:
-                copy = base.copy()
-                copy.embed(p, d, w)
-                crosswords.append(copy)
+            fit_words += fit_words_for_seq
+        for p, d, w in fit_words:
+            copy = base.copy()
+            copy.embed(p, d, w)
+            crosswords.append(copy)
 
 
 def propose_words(sequence, words):
@@ -109,12 +114,14 @@ def propose_words(sequence, words):
 
 
 def evaluate_crossword(c):
-    return (c.grid.width + c.grid.height) * 1.0 / len(c.used_words)
+    # return -len(c.used_words)
+    return (c.grid.width + c.grid.height) * 1.0 / len(c.used_words) ** 2
+    # return (c.grid.width * c.grid.height) * 1.0 / sum([len(w) for w in c.used_words])
 
 
-def pickup_crosswords(words):
+def pickup_crosswords(words, monitor=False):
     best = 9999
-    for c in build_crossword2(words):
+    for c in build_crossword2(words, monitor=monitor):
         if evaluate_crossword(c) < best:
             c.dump()
             best = evaluate_crossword(c)

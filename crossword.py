@@ -8,7 +8,48 @@ words = [
 ]
 
 
-class Grid(object):
+class OpenGrid(object):
+
+    FILLED = u'凸'
+    EMPTY = u'＿'
+    VERTICAL = 1
+    HORIZONTAL = 2
+
+    def __init__(self):
+        self.cells = {}
+
+    def copy(self):
+        copied = OpenGrid()
+        copied.cells = self.cells.copy()
+        return copied
+
+    def set(self, pos, value):
+        assert self.get(pos) == value or pos not in self.cells
+        if value == Grid.EMPTY: return
+        self.cells[pos] = value
+
+    def get(self, pos):
+        if pos in self.cells:
+            return self.cells[pos]
+        return Grid.EMPTY
+
+    @staticmethod
+    def pos_inc(pos, increment, direction):
+        row, col = pos
+        return (row + (increment if direction == Grid.VERTICAL else 0),
+                col + (increment if direction == Grid.HORIZONTAL else 0))
+
+    def poslist(self, pos, length, direction):
+        return [Grid.pos_inc(pos, i, direction) for i in range(length)]
+
+    def is_empty(self, pos):
+        return self.get(pos) == Grid.EMPTY
+
+    def get_word(self, pos, direction, length):
+        return u''.join([self.get(p) for p in self.poslist(pos, length, direction)])
+
+
+class Grid(OpenGrid):
 
     u'''
     >>> grid = Grid(3, 3)
@@ -21,17 +62,12 @@ class Grid(object):
     >>>
     '''
 
-    FILLED = u'凸'
-    EMPTY = u'＿'
-    VERTICAL = 1
-    HORIZONTAL = 2
-
     def __init__(self, width, height):
+        super(Grid, self).__init__()
         self.colmin = -1
         self.colmax = width
         self.rowmin = -1
         self.rowmax = height
-        self.cells = {}
         self.fill_wall()
 
     def copy(self):
@@ -51,22 +87,12 @@ class Grid(object):
             self.set((self.rowmin, col), Grid.FILLED)
             self.set((self.rowmax, col), Grid.FILLED)
 
-    def set(self, pos, value):
-        assert self.get(pos) == value or pos not in self.cells
-        if value == Grid.EMPTY: return
-        self.cells[pos] = value
-
     def get(self, pos):
         (r, c) = pos
         if (r < self.rowmin or self.rowmax < r or
            c < self.colmin or self.colmax < c):
             return Grid.EMPTY
-        if pos in self.cells:
-            return self.cells[pos]
-        return Grid.EMPTY
-
-    def is_empty(self, pos):
-        return self.get(pos) == Grid.EMPTY
+        return super(Grid, self).get(pos)
 
     def dump(self):
         lines = u''
@@ -76,22 +102,10 @@ class Grid(object):
                 lines += self.get((row, col))
         print lines
 
-    @staticmethod
-    def pos_inc(pos, increment, direction):
-        row, col = pos
-        return (row + (increment if direction == Grid.VERTICAL else 0),
-                col + (increment if direction == Grid.HORIZONTAL else 0))
-
-    def poslist(self, pos, length, direction):
-        return [Grid.pos_inc(pos, i, direction) for i in range(length)]
-
     def allpos(self):
         return ((r, c)
                 for r in range(self.rowmin, self.rowmax + 1)
                 for c in range(self.colmin, self.colmax + 1))
-
-    def get_word(self, pos, direction, length):
-        return u''.join([self.get(p) for p in self.poslist(pos, length, direction)])
 
     def get_col(self, col):
         return self.get_word((self.rowmin, col), Grid.VERTICAL, self.height)

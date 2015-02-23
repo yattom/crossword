@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import re
+
 from crossword import *
 
 
@@ -37,37 +39,132 @@ class Crossword2(Crossword):
         #MEET#
         _#____
         >>> c.all_disconnected_sequences()
-        [((1, 0), 2, 'T'), ((2, 0), 2, 'O'), ((0, 1), 1, 'N'), ((3, 1), 1, 'E'), ((0, 2), 1, 'TI'), ((3, 2), 1, 'E'), ((1, 3), 1, 'T'), ((3, 3), 1, 'T')]
+        [((0, 2), 2, 'T'), ((1, 0), 2, 'T'), ((2, 0), 2, 'O'), ((0, 1), 1, 'N'), ((3, 1), 1, 'E'), ((0, 2), 1, 'TI'), ((0, 2), 1, 'TI.E'), ((3, 2), 1, 'E'), ((1, 3), 1, 'T'), ((1, 3), 1, 'T.T'), ((3, 3), 1, 'T')]
+
         '''
         sequences = []
         for pos, direction, length in [((r, self.grid.colmin), HORIZONTAL, self.grid.width) for r in range(self.grid.rowmin, self.grid.rowmax + 1)] + [((self.grid.rowmin, c), VERTICAL, self.grid.height) for c in range(self.grid.colmin, self.grid.colmax + 1)]:
             line = self.grid.get_word(pos, direction, length)
             poslist = self.grid.poslist(pos, direction, length)
-            seq = ''
-            for (i, (c, p)) in enumerate(zip(line, poslist)):
-                if c == EMPTY or c == FILLED:
-                    if seq:
-                        sequences.append((seq_start, seq_direction, seq))
-                        seq = ''
-                    continue
-                if not seq:
-                    seq_start = p
-                    seq_direction = direction
-                seq += c
-                if self.is_connected(poslist[i - 1], p):
-                    seq = ''
-            if seq:
-                sequences.append((seq_start, seq_direction, seq))
-        return sequences
+            sequences += self.extract_sequences(line, poslist, direction)
+        return [(p, d, w) for (p, d, w) in sequences if not w.endswith('.')]
+
+    def extract_sequences(self, line, poslist, direction, idx=0, current_seq=None):
+        '''
+        >>> c = Crossword2()
+        >>> c.extract_sequences('ABC', [(0, 0), (0, 1), (0, 2)], HORIZONTAL)
+        [((0, 0), 2, 'ABC')]
+        >>> c.extract_sequences('_A_', [(0, 0), (0, 1), (0, 2)], HORIZONTAL)
+        [((0, 1), 2, 'A'), ((0, 1), 2, 'A.')]
+        >>> c.extract_sequences('A_C', [(0, 0), (0, 1), (0, 2)], HORIZONTAL)
+        [((0, 0), 2, 'A'), ((0, 0), 2, 'A.C'), ((0, 2), 2, 'C')]
+        >>> c.extract_sequences('A#C', [(0, 0), (0, 1), (0, 2)], HORIZONTAL)
+        [((0, 0), 2, 'A'), ((0, 2), 2, 'C')]
+        >>> c.extract_sequences('A_#B_C', [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0,5)], HORIZONTAL)
+        [((0, 0), 2, 'A'), ((0, 0), 2, 'A.'), ((0, 3), 2, 'B'), ((0, 3), 2, 'B.C'), ((0, 5), 2, 'C')]
+        >>> c.extract_sequences('A_B__C', [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0,5)], HORIZONTAL)
+        [((0, 0), 2, 'A'), ((0, 0), 2, 'A.B'), ((0, 2), 2, 'B'), ((0, 0), 2, 'A.B.'), ((0, 2), 2, 'B.'), ((0, 0), 2, 'A.B..C'), ((0, 2), 2, 'B..C'), ((0, 5), 2, 'C')]
+        '''
+        if not current_seq: current_seq = []
+        if idx >= len(line): return current_seq
+        c = line[idx]
+        pos = poslist[idx]
+
+        if c == FILLED:
+            return current_seq + self.extract_sequences(line, poslist, direction, idx + 1, [])
+        if c == EMPTY:
+            new_current_seq = [(p, d, s + '.') for (p, d, s) in current_seq]
+            return current_seq + self.extract_sequences(line, poslist, direction, idx + 1, new_current_seq)
+
+        if current_seq:
+            new_current_seq = [(p, d, s + c) for (p, d, s) in current_seq if not self.is_connected(poslist[idx - 1], pos)]
+            if any([s.endswith('.') for (p, d, s) in current_seq]):
+                new_current_seq.append((pos, direction, c))
+            return self.extract_sequences(line, poslist, direction, idx + 1, new_current_seq)
+        else:
+            new_current_seq = [(pos, direction, c)]
+            return self.extract_sequences(line, poslist, direction, idx + 1, new_current_seq)
 
 
 def build_crossword2(words, monitor=False):
     '''
     >>> ans = build_crossword2(['ANT', 'ART', 'RAT'])
     >>> for a in ans: a.dump()
+    #ANT#
     _#___
     #ANT#
-    #RAT#
+    _R___
+    _T___
+    _#___
+    ___#___
+    __#ANT#
+    ___R___
+    #RAT#__
+    ___#___
+    ___#_
+    ___R_
+    _#_A_
+    #ANT#
+    _R_#_
+    _T___
+    _#___
+    _#___
+    _R___
+    #ANT#
+    _T___
+    _#___
+    ___#_
+    _#_A_
+    _R_R_
+    #ANT#
+    _T_#_
+    _#___
+    ___#___
+    ___R___
+    __#ANT#
+    #ART#__
+    ___#___
+    ___#_
+    ___A_
+    ___R_
+    #ANT#
+    ___#_
+    ___#__
+    _#RAT#
+    ___R__
+    #ANT#_
+    ___#__
+    ___#_
+    _#_A_
+    _R_R_
+    #ANT#
+    _T_#_
+    _#___
+    ___#___
+    ___A___
+    __#RAT#
+    #ANT#__
+    ___#___
+    ___#_
+    ___R_
+    ___A_
+    #ANT#
+    ___#_
+    ___#__
+    _#ART#
+    ___A__
+    #ANT#_
+    ___#__
+    ___#___
+    ___R___
+    __#ART#
+    #ANT#__
+    ___#___
+    ___#_
+    ___R_
+    _#_A_
+    #ANT#
+    _R_#_
     _T___
     _#___
     '''
@@ -85,7 +182,7 @@ def build_crossword2(words, monitor=False):
                 base.dump()
             print
         sequences = base.all_disconnected_sequences()
-        if all([len(w) < 2 for (p, d, w) in sequences]):
+        if all([len(s) < 2 for (p, d, s) in sequences if s.find('.') == -1]):
             # valid; not neccessarily good nor complete
             yield base
         fit_words = []
@@ -107,9 +204,11 @@ def propose_words(sequence, words):
     proposed_words = []
     for word in words:
         idx = 0
-        while word.find(seq, idx) >= 0:
-            proposed_words.append((OpenGrid.pos_inc(p, -word.find(seq), d), d, word))
-            idx = word.find(seq, idx) + 1
+        while True:
+            m = re.search(seq, word[idx:])
+            if not m: break
+            proposed_words.append((OpenGrid.pos_inc(p, -(m.start() + idx), d), d, word))
+            idx += m.start() + 1
     return proposed_words
 
 

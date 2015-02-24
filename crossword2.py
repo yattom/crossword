@@ -88,19 +88,22 @@ class Crossword2(Crossword):
 
 def build_crossword2(words, monitor=False):
     '''
-    >>> ans = build_crossword2(['ANT', 'ART', 'RAT'])
-    >>> for a in ans: a.dump()
+    >>> ans = list(build_crossword2(['ANT', 'ART', 'RAT']))
+    >>> ans[0].dump()
     #ANT#
+    >>> ans[1].dump()
     _#___
     #ANT#
     _R___
     _T___
     _#___
+    >>> ans[2].dump()
     ___#___
     __#ANT#
     ___R___
     #RAT#__
     ___#___
+    >>> ans[3].dump()
     ___#_
     ___R_
     _#_A_
@@ -108,58 +111,69 @@ def build_crossword2(words, monitor=False):
     _R_#_
     _T___
     _#___
+    >>> ans[4].dump()
     _#___
     _R___
     #ANT#
     _T___
     _#___
+    >>> ans[5].dump()
     ___#_
     _#_A_
     _R_R_
     #ANT#
     _T_#_
     _#___
+    >>> ans[6].dump()
     ___#___
     ___R___
     __#ANT#
     #ART#__
     ___#___
+    >>> ans[7].dump()
     ___#_
     ___A_
     ___R_
     #ANT#
     ___#_
+    >>> ans[8].dump()
     ___#__
     _#RAT#
     ___R__
     #ANT#_
     ___#__
+    >>> ans[9].dump()
     ___#_
     _#_A_
     _R_R_
     #ANT#
     _T_#_
     _#___
+    >>> ans[10].dump()
     ___#___
     ___A___
     __#RAT#
     #ANT#__
     ___#___
+    >>> ans[11].dump()
     ___#_
     ___R_
     ___A_
     #ANT#
     ___#_
+    >>> ans[12].dump()
     ___#__
     _#ART#
     ___A__
     #ANT#_
     ___#__
+    >>> ans[13].dump()
     ___#___
     ___R___
     __#ART#
     #ANT#__
     ___#___
+    >>> ans[14].dump()
     ___#_
     ___R_
     _#_A_
@@ -167,6 +181,8 @@ def build_crossword2(words, monitor=False):
     _R_#_
     _T___
     _#___
+    >>> len(ans)
+    15
     '''
     crosswords = [Crossword2()]
     crosswords[0].embed((0, 0), HORIZONTAL, words[0])
@@ -182,21 +198,27 @@ def build_crossword2(words, monitor=False):
                 base.dump()
             print
         try:
-            candidates = generate_candidates(words, base)
-            yield base
+            sequences = base.all_disconnected_sequences()
+            if is_valid_crossword(sequences):
+                yield base
+            candidates = generate_candidates(words, base, sequences)
             crosswords += candidates
         except ValueError:
             # discard this base
             pass
 
 
-def generate_candidates(words, base):
-    sequences = base.all_disconnected_sequences()
+def is_valid_crossword(sequences):
+    return all([len(s) <= 1 or s.find('.') > -1 for _, _, s in sequences])
+
+
+def generate_candidates(words, base, sequences):
     fit_words = []
     for sequence in sequences:
-        fit_words_for_seq = [(p, d, w) for (p, d, w) in propose_words(sequence, [w for w in words if w not in base.used_words]) if base.is_fit(p, d, w)]
+        available_words = [w for w in words if w not in base.used_words]
+        fit_words_for_seq = [(p, d, w) for (p, d, w) in propose_words(sequence, available_words) if base.is_fit(p, d, w)]
         _, _, s = sequence
-        if s.find('.') == -1 and len(s) > 1 and not fit_words_for_seq:
+        if not fit_words_for_seq and len(s) > 1 and s.find('.') == -1:
             # dead end; discard this base
             raise ValueError('no candidates found')
         fit_words += fit_words_for_seq

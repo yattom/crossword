@@ -122,7 +122,7 @@ class OpenGrid(object):
                 if v == EMPTY: lines += empty
                 elif v == FILLED: lines += filled
                 else: lines += v
-        print lines
+        print (lines)
 
     def shrink(self):
         u'''
@@ -425,7 +425,7 @@ def build_crossword(width, height, words, monitor=False):
         if monitor:
             for c in crosswords:
                 c.dump(empty=monitor['EMPTY'], filled=monitor['FILLED'])
-                print
+                print ()
 
     validated_crosswords = [g for g in crosswords if g.is_all_words_valid()]
     for g in validated_crosswords: g.finalize()

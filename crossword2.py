@@ -188,15 +188,15 @@ def build_crossword2(words, monitor=False):
     crosswords[0].embed((0, 0), HORIZONTAL, words[0])
     while True:
         if not crosswords: break
-        crosswords = sorted(crosswords, cmp=lambda c1, c2: cmp(evaluate_crossword(c1), evaluate_crossword(c2)))
+        crosswords = sorted(crosswords, key=lambda c: evaluate_crossword(c))
         base = crosswords.pop(0)
         if monitor:
-            print '%d candidates...'%(len(crosswords))
+            print  ('%d candidates...'%(len(crosswords)))
             if isinstance(monitor, dict):
                 base.dump(empty=monitor['EMPTY'], filled=monitor['FILLED'])
             else:
                 base.dump()
-            print
+            print ()
         try:
             sequences = base.all_disconnected_sequences()
             if is_valid_crossword(sequences):
@@ -258,8 +258,8 @@ def pickup_crosswords(words, dump_option=None, monitor=False):
             else:
                 c.dump()
             best = evaluate_crossword(c)
-            print 'score: %f'%(best)
-            print
+            print ('score: %f'%(best))
+            print ()
 
 
 if __name__ == '__main__':

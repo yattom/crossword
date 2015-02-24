@@ -196,7 +196,7 @@ def build_crossword2(words, monitor=False):
                 base.dump(empty=monitor['EMPTY'], filled=monitor['FILLED'])
             else:
                 base.dump()
-            print ()
+            print ('')
         try:
             sequences = base.all_disconnected_sequences()
             if is_valid_crossword(sequences):
@@ -259,7 +259,7 @@ def pickup_crosswords(words, dump_option=None, monitor=False):
                 c.dump()
             best = evaluate_crossword(c)
             print ('score: %f'%(best))
-            print ()
+            print ('')
 
 
 if __name__ == '__main__':

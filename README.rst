@@ -32,6 +32,8 @@ Generate crossword puzzles with given words in a heuristic way.
 
 run.py tries to show valid and more useful results as early as possible.
 
+It run with both Python2.7 and Python3.4.
+
 Algorithm
 -----------------
 
